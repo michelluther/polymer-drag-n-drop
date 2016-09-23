@@ -1,0 +1,28 @@
+<script>
+(function(exports) {
+    'use strict';
+    if (!exports.DragNDrop) {
+        exports.DragNDrop = {};
+    };
+
+    exports.DragNDrop.Draggable = {
+    	properties : {
+    		dropTargetClass:  {
+    			type: String,
+    			reflectToAttribute: true,
+    			notify: false
+    		}
+    	}
+    };
+
+    exports.DragNDrop.DropTarget = {
+    	properties: {
+    		dropClass: {
+    			type: String,
+    			reflectToAttribute: true,
+    			notify: false
+    		}
+    	}
+    }
+})(window)
+</script>

@@ -1,0 +1,34 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<!--
+`polymer-drag-n-drop`
+Behaviors for draggable elements and drop targets
+
+@demo demo/index.html 
+-->
+
+<dom-module id="polymer-drag-n-drop">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <h2>Hello [[prop1]]</h2>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'polymer-drag-n-drop',
+
+      properties: {
+        prop1: {
+          type: String,
+          value: 'polymer-drag-n-drop',
+        },
+      },
+
+    });
+  </script>
+</dom-module>
