@@ -6,23 +6,103 @@
     };
 
     exports.DragNDrop.Draggable = {
-    	properties : {
-    		dropTargetClass:  {
-    			type: String,
-    			reflectToAttribute: true,
-    			notify: false
-    		}
-    	}
+        properties: {
+            dropTargetClass: {
+                type: String,
+                reflectToAttribute: true,
+                notify: false,
+                value: 'default'
+            },
+            draggable: {
+                type: Boolean,
+                value: true,
+                reflectToAttribute: true
+            }
+        },
+
+        listeners: {
+            'dragstart': 'registerDragStart'
+        },
+
+        registerDragStart: function(event) {
+            console.log('i am being dragged');
+            event.dataTransfer.setData('elementId', this.id);
+            event.dataTransfer.setData('dropClass', this.dropTargetClass);
+            event.stopPropagation();
+        },
+
+        iGotDropped: function(event) {
+            console.log('i got dropped');
+        }
+
     };
 
     exports.DragNDrop.DropTarget = {
-    	properties: {
-    		dropClass: {
-    			type: String,
-    			reflectToAttribute: true,
-    			notify: false
-    		}
-    	}
+
+        properties: {
+            dropClass: {
+                type: String,
+                reflectToAttribute: true,
+                notify: false,
+                value: 'default'
+            }
+        },
+
+        listeners: {
+            // 'dragstart': 'registerDragStart',
+            'dragover': 'enableDrag',
+            'drop': '_handleDropElement'
+        },
+
+        enableDrag: function(event) {
+            event.preventDefault();
+            console.log('hovering ...');
+            this._showDropTarget(event);
+        },
+
+        _handleDropElement: function(event) {
+            if (this.dropClass === event.dataTransfer.getData('dropClass')) {
+                this._insertElement(event)
+            }
+        },
+
+        _insertElement: function(dropEvent) {
+            var elementId = dropEvent.dataTransfer.getData("elementId");
+            var dropTargetSibling = this._getDroppedSibling(dropEvent.target);
+            if (dropTargetSibling) {
+                var insertBeforeElement;
+                if(dropTargetSibling.nextSibling === Polymer.dom(document.getElementById(elementId))){
+                    insertBeforeElement = dropTargetSibling;
+                } else {
+                    insertBeforeElement =  Polymer.dom(dropTargetSibling).nextSibling;
+                }
+                Polymer.dom(this).insertBefore(document.getElementById(elementId), insertBeforeElement);
+            } else {
+                Polymer.dom(this).appendChild(document.getElementById(elementId));
+            }
+        },
+
+        _getDroppedSibling: function(dropTarget) {
+
+            // var compareTargetClass = this.dropClass;
+
+            function getParentPolymerElement(element) {
+                if (Polymer.dom(element).node.host) {
+                    return Polymer.dom(element).node.host;
+                } else if (Polymer.dom(element).parentNode === null) {
+                    return;
+                } else {
+                    return getParentPolymerElement(Polymer.dom(element).parentNode);
+                }
+            };
+
+            return getParentPolymerElement(dropTarget);
+        },
+
+        _showDropTarget: function(event){
+            console.log(event);
+        }
+
     }
 })(window)
 </script>

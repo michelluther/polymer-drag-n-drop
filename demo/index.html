@@ -1,29 +1,204 @@
 <!doctype html>
 <html>
-  <head>
+
+<head>
     <title>polymer-drag-n-drop demo</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
     <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
-
     <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
     <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
-
-    <link rel="import" href="../polymer-drag-n-drop.html">
-
+    <link rel="import" href="../draggable-behavior.html">
     <style is="custom-style" include="demo-pages-shared-styles">
+
     </style>
-  </head>
-  <body>
+</head>
 
+<body>
     <div class="vertical-section-container centered">
-      <h3>Basic polymer-drag-n-drop Demo</h3>
-      <demo-snippet>
-        <template>
-          <polymer-drag-n-drop></polymer-drag-n-drop>
-        </template>
-      </demo-snippet>
+        <h3>Basic polymer-drag-n-drop Demo</h3>
+        <demo-snippet>
+            <template>
+                <dom-module id="draggable-element">
+                    <template>
+                        <style type="text/css">
+                        div {
+                            background-color: #fff;
+                            padding: 5px;
+                            margin: 3px;
+                        }
+                        </style>
+                        <div draggable="true">
+                            <p>{{text}}</p>
+                        </div>
+                    </template>
+                    <script type="text/javascript">
+                    (function() {
+                        Polymer({
+                            is: 'draggable-element',
+                            behaviors: [DragNDrop.Draggable],
+                            properties: {
+                                text: {
+                                    type: String,
+                                    reflectToAttribute: true
+                                }
+                            }
+                        });
+                    })();
+                    </script>
+                </dom-module>
+                <dom-module id="drop-target-element">
+                    <template>
+                        <style type="text/css">
+                        :host {
+                            background: #eee;
+                            border: 1px solid #999;
+                            padding: 5px;
+                            display: block;
+                        }
+                        
+                        .wrapper {
+                            display: block;
+                            background-color: #efefef;
+                            /*border: 1px solid #fff;*/
+                        }
+                        </style>
+                        <h4>{{heading}}</h4>
+                        <p>The items will drop between here ...</p>
+                        <div class="wrapper">
+                            <content></content>
+                        </div>
+                        <p>.. and here</p>
+                    </template>
+                    <script type="text/javascript">
+                    (function() {
+                        Polymer({
+                            is: 'drop-target-element',
+                            behaviors: [DragNDrop.DropTarget],
+                            properties: {
+                                heading: {
+                                    type: String
+                                }
+                            }
+                        });
+                    })();
+                    </script>
+                </dom-module>
+                <drop-target-element heading="First Section" drop-class="items" id="container_1">
+                    <draggable-element drop-target-class="items" id="123" text="Drag me around"></draggable-element>
+                    <draggable-element drop-target-class="items" id="223" text="You can drag me, too"></draggable-element>
+                </drop-target-element>
+                <drop-target-element heading="Second Section" drop-class="items" id="container_2">
+                    <draggable-element drop-target-class="items" id="323" text="Drag me, please"></draggable-element>
+                    <draggable-element drop-target-class="items" id="423" text="This is such a drag"></draggable-element>
+                </drop-target-element>
+            </template>
+        </demo-snippet>
     </div>
+    <div class="vertical-section-container centered">
+        <h3>Nested Lists and draggable drop containers</h3>
+        <demo-snippet>
+            <template>
+                <dom-module id="draggable-drop-target-element">
+                    <template>
+                        <style type="text/css">
+                        :host {
+                            background: #aaa;
+                            border: 1px solid #999;
+                            padding: 5px;
+                            display: block;
+                            margin: 5px ;
+                        }
+                        
+                        .wrapper {
+                            display: block;
+                            background-color: #efefef;
+                            border: 1px solid #fff;
+                        }
+                        </style>
+                        <div draggable="true">
+                            <h5>{{heading}}</h5>
+                            <p>The items will drop between here ...</p>
+                                <content></content>
+                            </div>
+                            <p>.. and here</p>
+                        </div>
+                    </template>
+                    <script type="text/javascript">
+                    (function() {
+                        Polymer({
+                            is: 'draggable-drop-target-element',
+                            behaviors: [DragNDrop.Draggable, DragNDrop.DropTarget],
+                            properties: {
+                                heading: {
+                                    type: String
+                                }
+                            }
+                        });
+                    })();
+                    </script>
+                </dom-module>
+                <drop-target-element heading="First Section" drop-class="sections" id="container_3">
+                    <draggable-drop-target-element drop-class="items" drop-target-class="sections" id="container_3_1" heading="Subsection 1">
+                        <draggable-element drop-target-class="items" id="523" text="Drag me around"></draggable-element>
+                        <draggable-element drop-target-class="items" id="623" text="You can drag me, too"></draggable-element>
+                    </draggable-drop-target-element>
+                </drop-target-element>
+                <drop-target-element heading="Second Section" drop-class="sections" id="container_4">
+                    <draggable-drop-target-element heading="Subsection 2" drop-class="items" drop-target-class="sections" id="container_4_1">
+                        <draggable-element drop-target-class="items" id="723" text="Drag me, please"></draggable-element>
+                        <draggable-element drop-target-class="items" id="823" text="This is such a drag"></draggable-element>
+                    </draggable-drop-target-element>
+                </drop-target-element>
+            </template>
+        </demo-snippet>
+    </div>
+    <div class="vertical-section-container centered">
+        <h3>Drag and drop in data-driven containers</h3>
+        <p>use '_insertElement'-method to do any data driven stuff</p>
+        <demo-snippet>
+            <template>
+                <dom-module id="animal-repeater">
+                    <template>
+                        <template is="dom-repeat" items="{{animals}}">
+                            <div>
+                                <draggable-element text="{{item}}"></draggable-element>
+                            </div>
+                        </template>
+                    </template>
+                    <script type="text/javascript">
+                    (function() {
+                        Polymer({
+                            is: 'animal-repeater',
+                            behaviors: [DragNDrop.DropTarget],
 
-  </body>
+                            properties: {
+                                animals: {
+                                    type: Array
+                                }
+                            },
+
+                            _insertElement: function(event) {
+                                console.log('custom logic goes here ...');
+                            },
+
+                            _removeElement: function(event) {
+
+                            }
+
+                        });
+                    })()
+                    </script>
+                </dom-module>
+                <h4>Mammals</h4>
+                <animal-repeater animals='["cats","dogs"]'>
+                </animal-repeater>
+                <h4>others</h4>
+                <animal-repeater animals='["fish","arachnae"]'>
+                </animal-repeater>
+            </template>
+        </demo-snippet>
+    </div>
+</body>
+
 </html>
