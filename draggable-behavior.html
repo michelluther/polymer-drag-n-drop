@@ -1,3 +1,9 @@
+<style>
+.dragGhost {
+    background-color: #aaa;
+    opacity: 0.5;
+}
+</style>
 <script>
 (function(exports) {
     'use strict';
@@ -5,6 +11,23 @@
         exports.DragNDrop = {};
     };
 
+    var _updateCallBacks = {},
+        _ghost = {},
+        _currentDragTarget,
+        _inDrag = false;
+
+    function setEventData(dragEvent, data) {
+        dragEvent.dataTransfer.setData('text/json', JSON.stringify(data));
+    };
+
+    function getEventData(dragEvent) {
+        if (dragEvent.dataTransfer.getData('text/json')) {
+            return JSON.parse(dragEvent.dataTransfer.getData('text/json'));
+        }
+    }
+/**********************************
+ * Draggable Behavior
+ **********************************/
     exports.DragNDrop.Draggable = {
         properties: {
             dropTargetClass: {
@@ -21,22 +44,59 @@
         },
 
         listeners: {
-            'dragstart': 'registerDragStart'
+            'dragstart': 'dragRegisterDragStart'
         },
 
-        registerDragStart: function(event) {
-            console.log('i am being dragged');
-            event.dataTransfer.setData('elementId', this.id);
-            event.dataTransfer.setData('dropClass', this.dropTargetClass);
-            event.stopPropagation();
+        ready: function() {
+            // register id because that is useful when moving stuff around the dom
+            if (!this.id) {
+                this.id = 'draggable_' + Math.floor(Math.random() * 100);
+            }
         },
 
-        iGotDropped: function(event) {
-            console.log('i got dropped');
+        _getData: function(event) {
+            return getEventData(event);
+        },
+
+        _setData: function(event, data) {
+            setEventData(event, data);
+
+        },
+
+
+        dragRegisterDragStart: function(event) {
+            _inDrag = true;
+
+            if (!getEventData(event)) {
+                var transferData = {};
+                transferData.elementId = this.id;
+                _currentDragTarget = this.id;
+                transferData.dropClass = this.dropTargetClass;
+                var thisRect = this.getBoundingClientRect();
+                var ghostElement = document.createElement('div');
+                ghostElement.innerHTML = this.innerHTML;
+                ghostElement.classList.add('dragGhost');
+                _ghost = {
+                    element: ghostElement,
+                    rect: {
+                        height: thisRect.height,
+                        width: thisRect.width
+                    },
+                    placedAt: null
+                };
+                this._setEventDataTransferDragItem(event, transferData);
+                setEventData(event, transferData);
+            }
+        },
+
+        _setEventDataTransferDragItem: function(event, data) {
+            /** implement logic for data driven scenarios here **/
         }
-
     };
 
+/**********************************
+ * DropTarget Behavior
+ **********************************/
     exports.DragNDrop.DropTarget = {
 
         properties: {
@@ -49,59 +109,178 @@
         },
 
         listeners: {
-            // 'dragstart': 'registerDragStart',
+            'dragstart': 'dropRegisterDragStart',
             'dragover': 'enableDrag',
             'drop': '_handleDropElement'
         },
 
-        enableDrag: function(event) {
-            event.preventDefault();
-            console.log('hovering ...');
-            this._showDropTarget(event);
+        /**
+         * Life cycle
+         */
+        attached: function() {
+            // register id because that is useful when moving stuff around the dom
+            if (!this.id) {
+                this.id = 'dropTarget_' + Math.floor(Math.random() * 1000);
+            }
+        },
+        /**
+         * delegations
+         */
+        _getData: function(event) {
+            return getEventData(event);
         },
 
-        _handleDropElement: function(event) {
-            if (this.dropClass === event.dataTransfer.getData('dropClass')) {
-                this._insertElement(event)
+        _setData: function(event, data) {
+            setEventData(event, data);
+        },
+
+        /**
+         * positioning
+         */
+        _decideAboveBelow: function(event) {
+
+        },
+
+        _getRelativeMousePosition: function(event){
+            var xPos = event.originalEvent.clientX;
+            var yPos = event.originalEvent.clientY;
+        }
+        
+
+        dropRegisterDragStart: function(event) {
+            var transferData = getEventData(event);
+            if (transferData.dropClass === this.dropClass) {
+                transferData.sourceContainer = this.id;
+                var callback = this._getDropCallBack(event);
+                if (typeof(callback) == 'function') {
+                    transferData.sourceCallback = this._registerDropCallBack(callback);
+                }
+                this._setEventDataTransferDropTarget(event, transferData);
+                setEventData(event, transferData);
+                event.stopPropagation();
             }
         },
 
-        _insertElement: function(dropEvent) {
-            var elementId = dropEvent.dataTransfer.getData("elementId");
-            var dropTargetSibling = this._getDroppedSibling(dropEvent.target);
-            if (dropTargetSibling) {
-                var insertBeforeElement;
-                if(dropTargetSibling.nextSibling === Polymer.dom(document.getElementById(elementId))){
-                    insertBeforeElement = dropTargetSibling;
-                } else {
-                    insertBeforeElement =  Polymer.dom(dropTargetSibling).nextSibling;
+        _getDropCallBack: function(event) {
+            // implement if required
+        },
+
+        enableDrag: function(event) {
+            event.preventDefault();
+            this._showDropTarget(event);
+        },
+
+        _registerDropCallBack: function(callback) {
+            // register drop call ... useful if the source container is not the 
+            // drop container but data still needs to be updated
+            _updateCallBacks[this.id] = callback;
+            return this.id;
+        },
+
+        _removeGhost: function() {
+            Polymer.dom(this).removeChild(_ghost.element);
+            // _ghost.element.parentNode.removeChild(_ghost.element);
+        },
+
+        _setEventDataTransferDropTarget: function(transferData) {
+            // append data required for drop handling
+        },
+
+        _updateContent: function(event) {
+            console.log('i will do something: ' + this.id);
+        },
+
+        _handleDropElement: function(event) {
+            _inDrag = false;
+            this._removeGhost();
+            var transferData = getEventData(event);
+            if (this.dropClass === transferData.dropClass) {
+                this._insertElement(event);
+
+                var callback = transferData.sourceCallback;
+                if (typeof(_updateCallBacks[callback]) == 'function') {
+                    _updateCallBacks[callback](event);
+                    delete _updateCallBacks[callback];
                 }
+            }
+            // this.flushDebouncer('dosomethingelse');
+            event.stopPropagation();
+            event.preventDefault();
+            _currentDragTarget = null;
+        },
+
+        _insertElement: function(dropEvent) {
+            var transferData = getEventData(dropEvent);
+            var elementId = transferData.elementId;
+            var insertBeforeElement = this._getElementToInsertBefore(dropEvent);
+            if (insertBeforeElement) {
                 Polymer.dom(this).insertBefore(document.getElementById(elementId), insertBeforeElement);
             } else {
                 Polymer.dom(this).appendChild(document.getElementById(elementId));
             }
         },
 
-        _getDroppedSibling: function(dropTarget) {
-
-            // var compareTargetClass = this.dropClass;
-
-            function getParentPolymerElement(element) {
-                if (Polymer.dom(element).node.host) {
-                    return Polymer.dom(element).node.host;
-                } else if (Polymer.dom(element).parentNode === null) {
-                    return;
+        _getElementToInsertBefore: function(dropEvent) {
+            // var transferData = getEventData(dropEvent);
+            // var elementId = transferData.elementId;
+            var elementId = _currentDragTarget;
+            var insertBeforeElement = this._getDroppedOntoElement(dropEvent.target);
+            if (insertBeforeElement) {
+                if (insertBeforeElement.nextSibling === Polymer.dom(document.getElementById(elementId))) {
+                    return insertBeforeElement;
                 } else {
-                    return getParentPolymerElement(Polymer.dom(element).parentNode);
+                    return Polymer.dom(insertBeforeElement).nextSibling;
+                }
+            } else {
+                return
+            }
+        },
+
+        _getDroppedOntoElement: function(dropTarget) {
+            var compareTargetClass = this.dropClass;
+
+            function getParentPolymerElement(element, dropClass) {
+                if (Polymer.dom(element).node.host) {
+                    if (Polymer.dom(element).node.host.dropTargetClass === compareTargetClass) {
+                        return Polymer.dom(element).node.host; // got it ...
+                    } else {
+                        return getParentPolymerElement(Polymer.dom(element).parentNode); // recursion
+                    }
+                } else if (Polymer.dom(element).parentNode === null) {
+                    return; // exit recursion
+                } else {
+                    return getParentPolymerElement(Polymer.dom(element).parentNode); // recursion
                 }
             };
 
-            return getParentPolymerElement(dropTarget);
+            var polymerElement = getParentPolymerElement(dropTarget);
+            return polymerElement;
         },
 
-        _showDropTarget: function(event){
-            console.log(event);
-        }
+        _showDropTarget: function(event) {
+            if (_inDrag === true) {
+                // dataTransfer is in protected mode at this stage, so do not try
+                // to interact with it
+                var transferData = getEventData(event);
+                var insertBeforeElement = this._getElementToInsertBefore(event);
+                if (insertBeforeElement) {
+                    if (insertBeforeElement !== _ghost.element) {
+                        Polymer.dom(this).insertBefore(_ghost.element, insertBeforeElement);
+                    }
+                } else {
+                    // Polymer.dom(this).appendChild(dropEvent.srcElement);
+                    if (_ghost.placedAt !== this) {
+                        _ghost.placedAt = this;
+                        Polymer.dom(this).appendChild(_ghost.element);
+                    }
+                }
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            console.log(this.isDebouncerActive('doit'));
+        },
+
+
 
     }
 })(window)

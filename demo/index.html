@@ -42,7 +42,9 @@
                                     type: String,
                                     reflectToAttribute: true
                                 }
-                            }
+                            },
+
+
                         });
                     })();
                     </script>
@@ -107,7 +109,7 @@
                             border: 1px solid #999;
                             padding: 5px;
                             display: block;
-                            margin: 5px ;
+                            margin: 5px;
                         }
                         
                         .wrapper {
@@ -119,39 +121,39 @@
                         <div draggable="true">
                             <h5>{{heading}}</h5>
                             <p>The items will drop between here ...</p>
-                                <content></content>
-                            </div>
-                            <p>.. and here</p>
+                            <content></content>
                         </div>
-                    </template>
-                    <script type="text/javascript">
-                    (function() {
-                        Polymer({
-                            is: 'draggable-drop-target-element',
-                            behaviors: [DragNDrop.Draggable, DragNDrop.DropTarget],
-                            properties: {
-                                heading: {
-                                    type: String
-                                }
-                            }
-                        });
-                    })();
-                    </script>
-                </dom-module>
-                <drop-target-element heading="First Section" drop-class="sections" id="container_3">
-                    <draggable-drop-target-element drop-class="items" drop-target-class="sections" id="container_3_1" heading="Subsection 1">
-                        <draggable-element drop-target-class="items" id="523" text="Drag me around"></draggable-element>
-                        <draggable-element drop-target-class="items" id="623" text="You can drag me, too"></draggable-element>
-                    </draggable-drop-target-element>
-                </drop-target-element>
-                <drop-target-element heading="Second Section" drop-class="sections" id="container_4">
-                    <draggable-drop-target-element heading="Subsection 2" drop-class="items" drop-target-class="sections" id="container_4_1">
-                        <draggable-element drop-target-class="items" id="723" text="Drag me, please"></draggable-element>
-                        <draggable-element drop-target-class="items" id="823" text="This is such a drag"></draggable-element>
-                    </draggable-drop-target-element>
-                </drop-target-element>
-            </template>
-        </demo-snippet>
+                        <p>.. and here</p>
+    </div>
+    </template>
+    <script type="text/javascript">
+    (function() {
+        Polymer({
+            is: 'draggable-drop-target-element',
+            behaviors: [DragNDrop.Draggable, DragNDrop.DropTarget],
+            properties: {
+                heading: {
+                    type: String
+                }
+            }
+        });
+    })();
+    </script>
+    </dom-module>
+    <drop-target-element heading="First Section" drop-class="sections" id="container_3">
+        <draggable-drop-target-element drop-class="items" drop-target-class="sections" id="container_3_1" heading="Subsection 1">
+            <draggable-element drop-target-class="items" id="523" text="Drag me around"></draggable-element>
+            <draggable-element drop-target-class="items" id="623" text="You can drag me, too"></draggable-element>
+        </draggable-drop-target-element>
+    </drop-target-element>
+    <drop-target-element heading="Second Section" drop-class="sections" id="container_4">
+        <draggable-drop-target-element heading="Subsection 2" drop-class="items" drop-target-class="sections" id="container_4_1">
+            <draggable-element drop-target-class="items" id="723" text="Drag me, please"></draggable-element>
+            <draggable-element drop-target-class="items" id="823" text="This is such a drag"></draggable-element>
+        </draggable-drop-target-element>
+    </drop-target-element>
+    </template>
+    </demo-snippet>
     </div>
     <div class="vertical-section-container centered">
         <h3>Drag and drop in data-driven containers</h3>
@@ -162,7 +164,7 @@
                     <template>
                         <template is="dom-repeat" items="{{animals}}">
                             <div>
-                                <draggable-element text="{{item}}"></draggable-element>
+                                <draggable-element drop-target-class="{{drop-class}}" text="{{item.name}}" id="{{_getAnimalElementId(item.id)}}"></draggable-element>
                             </div>
                         </template>
                     </template>
@@ -178,12 +180,51 @@
                                 }
                             },
 
+                            _setEventDataTransferDropTarget: function(event, data) {
+                                var animal_id = data.elementId.split('_')[1];
+                                var boundData;
+                                for (var i = 0; i < this.animals.length; i++) {
+                                    if (this.animals[i].id === animal_id) {
+                                        boundData = this.animals[i];
+                                        continue;
+                                    }
+                                };
+
+                                data.boundData = boundData;
+                            },
+
+                            _getDropCallBack: function(event) {
+                                return this._removeElement.bind(this);
+                            },
+
                             _insertElement: function(event) {
-                                console.log('custom logic goes here ...');
+                                var dropData = this._getData(event);
+                                this.push('animals', dropData.boundData);
                             },
 
                             _removeElement: function(event) {
+                                var dropData = this._getData(event);
+                                var animal_id = dropData.boundData.id;
+                                var arrayIndex;
+                                for (var i = 0; i < this.animals.length; i++) {
+                                    if (this.animals[i].id === animal_id) {
+                                        arrayIndex = i;
+                                        continue;
+                                    }
+                                };
+                                this.splice('animals', arrayIndex, 1);
+                            },
 
+                            _showDropTarget: function(event){
+
+                            },
+
+                            _removeGhost:function(){
+
+                            },
+
+                            _getAnimalElementId: function(animalId) {
+                                return 'animal_' + animalId;
                             }
 
                         });
@@ -191,10 +232,10 @@
                     </script>
                 </dom-module>
                 <h4>Mammals</h4>
-                <animal-repeater animals='["cats","dogs"]'>
+                <animal-repeater drop-class="items" animals='[{"id": "1", "name": "cats"},{"id": "2", "name": "dogs"}]'>
                 </animal-repeater>
                 <h4>others</h4>
-                <animal-repeater animals='["fish","arachnae"]'>
+                <animal-repeater drop-class="items" animals='[{"id": "3", "name": "fish"},{"id": "4", "name": "arachnae"}]'>
                 </animal-repeater>
             </template>
         </demo-snippet>
