@@ -25,7 +25,8 @@
                         div {
                             background-color: #fff;
                             padding: 5px;
-                            margin: 3px;
+                            margin: 0px;
+                            border: 1px solid #bbb;
                         }
                         </style>
                         <div draggable="true">
@@ -180,7 +181,7 @@
                                 }
                             },
 
-                            _setEventDataTransferDropTarget: function(event, data) {
+                            _addDataDragStartDropTarget: function(event, data) {
                                 var animal_id = data.elementId.split('_')[1];
                                 var boundData;
                                 for (var i = 0; i < this.animals.length; i++) {
@@ -197,8 +198,10 @@
                                 return this._removeElement.bind(this);
                             },
 
-                            _insertElement: function(event) {
+                            _insertDroppedElement: function(event) {
                                 var dropData = this._getData(event);
+                                debugger;
+                                var insertionPoint = this._getInsertionPoint(event);
                                 this.push('animals', dropData.boundData);
                             },
 
