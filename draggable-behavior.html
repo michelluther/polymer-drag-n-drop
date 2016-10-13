@@ -1,3 +1,11 @@
+<link rel="import" href="../polymer/polymer.html">
+<style type="text/css">
+.dragNDropGhost {
+    position: absolute;
+    border-bottom: 2px solid #ff0000;
+    height: 2px;
+}
+</style>
 <script>
 (function(exports) {
     'use strict';
@@ -14,25 +22,92 @@
     var POSITION_BELOW = 'below';
     var POSITION_APPEND_INSIDE = 'append-inside';
 
-    function InsertionPoint(element, position) {
+    function InsertionPoint(element, event) {
+
         /**
          * @property {string} position Can be 'above', 'below', 'append-inside'
          */
-        position: '';
+        this.position = '';
         /**
          * @property {PolymerElement} element Element to be inserted before or after 
          */
-        element: {};
+        this.element = {};
 
-        this.position = position;
-        this.element = element;
+        this.coordinates = {};
+
+        function _construct(element, event, container) {
+
+            var eventMetadata = {
+                screenx: event.screenX,
+                screeny: event.screenY,
+                offsetx: event.offsetX,
+                offsety: event.offsetY,
+                x: event.x,
+                y: event.y,
+                clientX: event.clientX,
+                clientY: event.clientY
+            };
+
+            var targetMetadata = {
+                left: element.offsetLeft,
+                top: element.offsetTop,
+                rect: element.getBoundingClientRect()
+            };
+
+            if (element.nextSibling === Polymer.dom(document.getElementById(element.id))) {
+                this.position = POSITION_BELOW;
+            } else {
+                this.position = this._decideAboveBelow(eventMetadata, targetMetadata);
+            }
+
+            this._buildCoordinates(targetMetadata, this.position);
+
+            this.element = element;
+        };
+
+        _construct.bind(this)(element, event);
     };
+
+    /**
+     * Decides whether the dragged element should be placed above or below the 
+     * hovered sibling
+     * algorithm:
+     * - get height of element
+     */
+    InsertionPoint.prototype._decideAboveBelow = function(eventMetadata, targetMetadata) {
+        var elementHeight = targetMetadata.rect.height;
+        var yPositionInsideElement = eventMetadata.clientY - targetMetadata.rect.top;
+        if (Math.round(yPositionInsideElement / targetMetadata.rect.height) < 1) {
+            return POSITION_ABOVE;
+        } else {
+            return POSITION_BELOW;
+        }
+    };
+
+    InsertionPoint.prototype._buildCoordinates = function(targetMetadata, position) {
+        if (position === POSITION_ABOVE) {
+            this.coordinates = {
+                top: targetMetadata.rect.top,
+                left: targetMetadata.rect.left,
+                right: targetMetadata.rect.right - targetMetadata.rect.width
+            }
+        } else {
+            this.coordinates = {
+                top: targetMetadata.rect.top + targetMetadata.rect.height,
+                left: targetMetadata.rect.left,
+                right: targetMetadata.rect.right - targetMetadata.rect.width
+            }
+        }
+    };
+
 
     var _updateCallBacks = {},
         _ghost = {},
         _currentDragTarget,
         _inDrag = false,
-        _globalDropRegistry;
+        _globalDropRegistry,
+        _placeHolder,
+        _draggedData = {};
 
     function generateId(prefix) {
         return prefix + '_' + Math.floor(Math.random() * 100);
@@ -46,16 +121,14 @@
         if (dragEvent.dataTransfer.getData('text/json')) {
             return JSON.parse(dragEvent.dataTransfer.getData('text/json'));
         }
-    }
+    };
 
     function registGlobalDrop() {
         document.addEventListener('drop', function(event) {
 
         })
-    }
+    };
     /**
-     * 
-     *
      * @polymerBehavior DragNDrop.Draggable
      *
      */
@@ -71,6 +144,9 @@
                 type: Boolean,
                 value: true,
                 reflectToAttribute: true
+            },
+            dropTargetElementId: {
+                type: String
             }
         },
 
@@ -165,6 +241,10 @@
                 reflectToAttribute: true,
                 notify: false,
                 value: 'default'
+            },
+            showSimpleDragPosition: {
+                type: Boolean,
+                value: true
             }
         },
 
@@ -194,23 +274,16 @@
             setEventData(event, data);
         },
 
-        /**
-         * Decides whether the dragged element should be placed above or below the 
-         * hovered sibling
-         * algorithm:
-         * - get height of element
-         */
-        _decideAboveBelow: function(eventMetadata, targetMetadata) {
-            var elementHeight = targetMetadata.rect.height;
-            var yPositionInsideElement = eventMetadata.clientY - targetMetadata.rect.top;
-            console.log(yPositionInsideElement / targetMetadata.rect.height);
-            console.log(Math.round(yPositionInsideElement / targetMetadata.rect.height) < 1);
-            if (Math.round(yPositionInsideElement / targetMetadata.rect.height) < 1) {
-                return POSITION_ABOVE;
-            } else {
-                return POSITION_BELOW;
-            }
+        _setDraggedData: function(data, index, parent) {
+            _draggedData.data = data;
+            _draggedData.index = index;
+            _draggedData.parent = parent;
         },
+
+        _getDraggedData: function() {
+            return _draggedData;
+        },
+
         /**
          * event handlers
          */
@@ -239,30 +312,24 @@
             _inDrag = false;
             var transferData = getEventData(event);
             if (this.dropClass === transferData.dropClass) {
-                this._insertDroppedElement(event);
                 var callback = transferData.sourceCallback;
                 if (typeof(_updateCallBacks[callback]) == 'function') {
                     _updateCallBacks[callback](event);
                     delete _updateCallBacks[callback];
                 }
+                this._insertDroppedElement(event);
             }
             this._removeGhost();
             event.stopPropagation();
             event.preventDefault();
             _currentDragTarget = null;
         },
-
+        /**
+         * @event dragover
+         */
         _enableDrag: function(event) {
             event.preventDefault();
             this._showDropTarget(event);
-        },
-
-        /**
-         * Managing the mouse position relative to the hover target
-         */
-        _getRelativeMousePosition: function(event) {
-            var xPos = event.originalEvent.clientX;
-            var yPos = event.originalEvent.clientY;
         },
 
         _getDropCallBack: function(event) {
@@ -278,7 +345,11 @@
         },
 
         _removeGhost: function() {
-            Polymer.dom(this).removeChild(_ghost.element);
+            if (this.showSimpleDragPosition) {
+                Polymer.dom(document.body).removeChild(_placeHolder);
+            } else {
+                Polymer.dom(this).removeChild(_ghost.element);
+            }
         },
         /**
          * methods meant for @override by using elements
@@ -308,7 +379,19 @@
             var insertionPoint = this._getInsertionPoint(event);
             var elementToInsert = document.getElementById(transferData.elementId);
             // this._insertElement(elementToInsert, insertionPoint);
-            Polymer.dom(this).insertBefore(elementToInsert, Polymer.dom(this).querySelector('drag-n-drop-ghost'));
+            if (insertionPoint.element.id === 'wrapper') {
+                Polymer.dom(this).appendChild(elementToInsert);
+            } else {
+                if (insertionPoint.position === POSITION_ABOVE) {
+                    if (elementToInsert !== insertionPoint.element) {
+                        Polymer.dom(this).insertBefore(elementToInsert, insertionPoint.element);
+                    }
+                } else if (insertionPoint.position === POSITION_BELOW) {
+                    if (elementToInsert !== Polymer.dom(insertionPoint.element).nextSibling) {
+                        Polymer.dom(this).insertBefore(elementToInsert, Polymer.dom(insertionPoint.element).nextSibling);
+                    }
+                }
+            }
         },
 
         /**
@@ -322,30 +405,9 @@
             if (insertBeforeElement === _ghost.element) {
                 return;
             } else if (insertBeforeElement) {
-                var eventMetadata = {
-                    screenx: event.screenX,
-                    screeny: event.screenY,
-                    offsetx: event.offsetX,
-                    offsety: event.offsetY,
-                    x: event.x,
-                    y: event.y,
-                    clientX: event.clientX,
-                    clientY: event.clientY
-                };
-
-                var targetMetadata = {
-                    left: insertBeforeElement.offsetLeft,
-                    top: insertBeforeElement.offsetTop,
-                    rect: insertBeforeElement.getBoundingClientRect()
-                };
-
-                if (insertBeforeElement.nextSibling === Polymer.dom(document.getElementById(elementId))) {
-                    return new InsertionPoint(insertBeforeElement, POSITION_BELOW);
-                } else {
-                    return new InsertionPoint(insertBeforeElement, this._decideAboveBelow(eventMetadata, targetMetadata));
-                }
+                return new InsertionPoint(insertBeforeElement, event);
             } else {
-                return new InsertionPoint(this, POSITION_APPEND_INSIDE);
+                return new InsertionPoint(this.$.wrapper, event);
             }
         },
 
@@ -389,23 +451,41 @@
             }
         },
 
+        _getPlaceHolder: function() {
+            if (!_placeHolder) {
+                _placeHolder = document.createElement('div');
+                _placeHolder.style.border = '1px solid #ff0000';
+                // _placeHolder.style.height = '10px';
+                _placeHolder.style.position = 'fixed';
+                _placeHolder.style['z-index'] = '100';
+                _placeHolder.classList.add('dragNDropGhost');
+            }
+            return _placeHolder;
+        },
+
         _showDropTarget: function(event) {
             if (_inDrag === true) {
                 // dataTransfer is in protected mode at this stage, so do not try
                 // to interact with it
-                var transferData = getEventData(event);
                 var insertionPoint = this._getInsertionPoint(event);
-                if (insertionPoint.element !== _ghost.element) {
-                    this._insertElement(_ghost.element, insertionPoint);
+                if (this.showSimpleDragPosition) {
+                    var placeHolder = this._getPlaceHolder();
+                    placeHolder.style.top = insertionPoint.coordinates.top + 'px';
+                    placeHolder.style.left = insertionPoint.coordinates.left + 'px';
+                    placeHolder.style.right = insertionPoint.coordinates.right + 'px';
+                    placeHolder.style['pointer-events'] = 'none';
+                    Polymer.dom(document.body).appendChild(placeHolder);
+                } else {
+                    var transferData = getEventData(event);
+                    if (insertionPoint.element !== _ghost.element) {
+                        this._insertElement(_ghost.element, insertionPoint);
+                    }
                 }
                 event.preventDefault();
                 event.stopPropagation();
             }
         }
-
-
     }
-
 })(window)
 </script>
 <dom-module id="drag-n-drop-ghost">
@@ -413,7 +493,6 @@
         <style>
         div {
             background-color: #aaa;
-            /**/
             opacity: 0.5;
         }
         </style>
@@ -440,7 +519,6 @@
             event.stopPropagation();
             event.preventDefault();
         }
-
 
     })
     </script>

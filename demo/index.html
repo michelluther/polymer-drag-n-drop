@@ -9,6 +9,7 @@
     <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
     <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
     <link rel="import" href="../draggable-behavior.html">
+    <link rel="import" href="../data-driven-drag-n-drop.html">
     <style is="custom-style" include="demo-pages-shared-styles">
 
     </style>
@@ -68,7 +69,7 @@
                         </style>
                         <h4>{{heading}}</h4>
                         <p>The items will drop between here ...</p>
-                        <div class="wrapper">
+                        <div id="wrapper">
                             <content></content>
                         </div>
                         <p>.. and here</p>
@@ -82,6 +83,9 @@
                                 heading: {
                                     type: String
                                 }
+                            },
+                            ready: function() {
+                                this.dropTargetElementId = 'wrapper';
                             }
                         });
                     })();
@@ -161,23 +165,73 @@
         <p>use '_insertElement'-method to do any data driven stuff</p>
         <demo-snippet>
             <template>
+                <dom-module id="animal-element">
+                    <template>
+                        <div class$="{{getGhostClassClass(ghostClass)}}" draggable="true" style="padding:1em;">
+                            <p>{{text}}</p>
+                        </div>
+                    </template>
+                    <script>
+                    Polymer({
+                        is: 'animal-element',
+                        behaviors: [DragNDrop.Draggable],
+                        properties: {
+                            ghostClass: {
+                                type: String,
+                                value: ""
+                            },
+                            text: {
+                                type: String,
+                                reflectToAttribute: true
+                            }
+                        },
+
+                        listeners: {
+                            'dragover': '_stopPropagation'
+                        },
+
+                        _stopPropagation: function(event) {
+                            // debugger;
+                            // if (this.ghostClass == 'ghost') {
+                            //     debugger;
+                            //     event.stopPropagation();
+                            //     event.preventDefault();
+                            // }
+                        },
+
+                        attached: function() {
+                            console.log('i was attached');
+                        },
+
+                        getGhostClassClass: function(ghostClass) {
+                            return 'huu';
+                        }
+                    });
+                    </script>
+                </dom-module>
                 <dom-module id="animal-repeater">
                     <template>
-                        <template is="dom-repeat" items="{{animals}}">
-                            <div>
-                                <draggable-element drop-target-class="{{drop-class}}" text="{{item.name}}" id="{{_getAnimalElementId(item.id)}}"></draggable-element>
-                            </div>
-                        </template>
+                        <h4>{{category}}</h4>
+                        <div id="wrapper" style="display:block">
+                            <template is="dom-repeat" items="{{animals}}">
+                                <animal-element drop-target-class="{{drop-class}}" text="{{item.name}}" id="{{_getAnimalElementId(item.id)}}">
+                                </animal-element>
+                            </template>
+                        </div>
                     </template>
                     <script type="text/javascript">
                     (function() {
+
                         Polymer({
                             is: 'animal-repeater',
-                            behaviors: [DragNDrop.DropTarget],
+                            behaviors: [DragNDrop.DataDrivenDropTarget],
 
                             properties: {
                                 animals: {
                                     type: Array
+                                },
+                                category: {
+                                    type: String
                                 }
                             },
 
@@ -190,8 +244,8 @@
                                         continue;
                                     }
                                 };
-
                                 data.boundData = boundData;
+                                this._setDraggedData(boundData, i, this.id);
                             },
 
                             _getDropCallBack: function(event) {
@@ -200,9 +254,26 @@
 
                             _insertDroppedElement: function(event) {
                                 var dropData = this._getData(event);
-                                debugger;
                                 var insertionPoint = this._getInsertionPoint(event);
-                                this.push('animals', dropData.boundData);
+                                var insertionPointIndex = this._getInsertionPointIndex(insertionPoint);
+                                if (insertionPoint.position === 'append-inside') {
+                                    this.push('animals', dropData.boundData);
+                                } else {
+                                    this.splice('animals', insertionPointIndex, 0, dropData.boundData);
+                                }
+                            },
+
+                            _getInsertionPointIndex: function(insertionPoint) {
+                                var animal_id = insertionPoint.element.id.split('_')[1];
+                                for (var i = 0; i < this.animals.length; i++) {
+                                    if (this.animals[i].id === animal_id) {
+                                        if (insertionPoint.position === 'above') {
+                                            return i;
+                                        } else {
+                                            return i + 1;
+                                        }
+                                    }
+                                }
                             },
 
                             _removeElement: function(event) {
@@ -218,14 +289,6 @@
                                 this.splice('animals', arrayIndex, 1);
                             },
 
-                            _showDropTarget: function(event){
-
-                            },
-
-                            _removeGhost:function(){
-
-                            },
-
                             _getAnimalElementId: function(animalId) {
                                 return 'animal_' + animalId;
                             }
@@ -234,11 +297,9 @@
                     })()
                     </script>
                 </dom-module>
-                <h4>Mammals</h4>
-                <animal-repeater drop-class="items" animals='[{"id": "1", "name": "cats"},{"id": "2", "name": "dogs"}]'>
+                <animal-repeater category="Mammals" drop-class="items" animals='[{"id": "1", "name": "cats"},{"id": "2", "name": "dogs"}]'>
                 </animal-repeater>
-                <h4>others</h4>
-                <animal-repeater drop-class="items" animals='[{"id": "3", "name": "fish"},{"id": "4", "name": "arachnae"}]'>
+                <animal-repeater category="others" drop-class="items" animals='[{"id": "3", "name": "fish"},{"id": "4", "name": "arachnae"}]'>
                 </animal-repeater>
             </template>
         </demo-snippet>
