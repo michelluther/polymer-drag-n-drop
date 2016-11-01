@@ -35,7 +35,12 @@
 
         this.coordinates = {};
 
+        if (!element) {
+            // debugger;
+        }
+
         function _construct(element, event, container) {
+
 
             var eventMetadata = {
                 screenx: event.screenX,
@@ -64,8 +69,9 @@
 
             this.element = element;
         };
-
+        // if (element) {
         _construct.bind(this)(element, event);
+        // }
     };
 
     /**
@@ -89,13 +95,15 @@
             this.coordinates = {
                 top: targetMetadata.rect.top,
                 left: targetMetadata.rect.left,
-                right: targetMetadata.rect.right - targetMetadata.rect.width
+                right: targetMetadata.rect.right - targetMetadata.rect.width,
+                width: targetMetadata.rect.width
             }
         } else {
             this.coordinates = {
                 top: targetMetadata.rect.top + targetMetadata.rect.height,
                 left: targetMetadata.rect.left,
-                right: targetMetadata.rect.right - targetMetadata.rect.width
+                right: targetMetadata.rect.right - targetMetadata.rect.width,
+                width: targetMetadata.rect.width
             }
         }
     };
@@ -140,10 +148,9 @@
                 notify: false,
                 value: 'default'
             },
-            draggable: {
+            draggableEnabled: {
                 type: Boolean,
-                value: true,
-                reflectToAttribute: true
+                value: true
             },
             dropTargetElementId: {
                 type: String
@@ -208,6 +215,7 @@
                 };
                 this._setEventDataTransferDragItem(event, transferData);
                 setEventData(event, transferData);
+                _draggedData = transferData;
                 // this.hidden = true;
             }
         },
@@ -243,6 +251,10 @@
                 value: 'default'
             },
             showSimpleDragPosition: {
+                type: Boolean,
+                value: true
+            },
+            dropEnabled: {
                 type: Boolean,
                 value: true
             }
@@ -318,18 +330,25 @@
                     delete _updateCallBacks[callback];
                 }
                 this._insertDroppedElement(event);
+                this._removeGhost();
+                event.stopPropagation();
+                event.preventDefault();
+                _currentDragTarget = null;
             }
-            this._removeGhost();
-            event.stopPropagation();
-            event.preventDefault();
-            _currentDragTarget = null;
         },
         /**
          * @event dragover
          */
         _enableDrag: function(event) {
-            event.preventDefault();
-            this._showDropTarget(event);
+
+            console.log('this.dropClass: ' + this.dropClass + ', _draggedData.dropClass: ' + _draggedData.dropClass);
+            if (this.dropEnabled === true && this.dropClass === _draggedData.dropClass) {
+                event.preventDefault();
+                event.stopPropagation();
+                this._showDropTarget(event);
+            } else {
+                console.log('you cannot drop me here');
+            }
         },
 
         _getDropCallBack: function(event) {
@@ -407,20 +426,28 @@
             } else if (insertBeforeElement) {
                 return new InsertionPoint(insertBeforeElement, event);
             } else {
-                return new InsertionPoint(this.$.wrapper, event);
+                if (this.$.wrapper) {
+                    return new InsertionPoint(this.$.wrapper, event);
+                } else {
+                    return;
+                }
             }
         },
 
 
         _getParentPolymerElement: function(element, dropClass) {
-            if (Polymer.dom(element).node.host) {
+            if (Polymer.dom(element).node.dropTargetClass === dropClass) {
+                return Polymer.dom(element).node;
+            } else if (Polymer.dom(element).node.host) { // found a polymer element
                 if (Polymer.dom(element).node.host.dropTargetClass === dropClass || element.nodeName === 'DRAG-N-DROP-GHOST') {
                     if (element.nodeName === 'DRAG-N-DROP-GHOST') {
                         console.log('HOVERED A GHOST');
                     }
                     return Polymer.dom(element).node.host; // got it ...
-                } else {
+                } else if (Polymer.dom(element).parentNode) {
                     return this._getParentPolymerElement(Polymer.dom(element).parentNode, dropClass); // recursion
+                } else {
+                    return this._getParentPolymerElement(Polymer.dom(element).node.host.parentNode, dropClass); // recursion
                 }
             } else if (Polymer.dom(element).parentNode === null) {
                 return; // exit recursion
@@ -472,7 +499,7 @@
                     var placeHolder = this._getPlaceHolder();
                     placeHolder.style.top = insertionPoint.coordinates.top + 'px';
                     placeHolder.style.left = insertionPoint.coordinates.left + 'px';
-                    placeHolder.style.right = insertionPoint.coordinates.right + 'px';
+                    placeHolder.style.width = insertionPoint.coordinates.width + 'px';
                     placeHolder.style['pointer-events'] = 'none';
                     Polymer.dom(document.body).appendChild(placeHolder);
                 } else {

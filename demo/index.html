@@ -23,6 +23,10 @@
                 <dom-module id="draggable-element">
                     <template>
                         <style type="text/css">
+                        :host {
+                            display: block;
+                        }
+                        
                         div {
                             background-color: #fff;
                             padding: 5px;
@@ -126,7 +130,9 @@
                         <div draggable="true">
                             <h5>{{heading}}</h5>
                             <p>The items will drop between here ...</p>
-                            <content></content>
+                            <div id="wrapper">
+                                <content></content>
+                            </div>
                         </div>
                         <p>.. and here</p>
     </div>
