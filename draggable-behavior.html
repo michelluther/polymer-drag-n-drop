@@ -1,11 +1,4 @@
 <link rel="import" href="../polymer/polymer.html">
-<style type="text/css">
-.dragNDropGhost {
-    position: absolute;
-    border-bottom: 2px solid #ff0000;
-    height: 2px;
-}
-</style>
 <script>
 (function(exports) {
     'use strict';
@@ -14,128 +7,14 @@
         exports.DragNDrop = {};
     };
 
-    /**
-     * closure globals
-     */
+    var DragNDrop = exports.DragNDrop;    
+    DragNDrop._inDrag = false;
 
-    var POSITION_ABOVE = 'above';
-    var POSITION_BELOW = 'below';
-    var POSITION_APPEND_INSIDE = 'append-inside';
-
-    function InsertionPoint(element, event) {
-
-        /**
-         * @property {string} position Can be 'above', 'below', 'append-inside'
-         */
-        this.position = '';
-        /**
-         * @property {PolymerElement} element Element to be inserted before or after 
-         */
-        this.element = {};
-
-        this.coordinates = {};
-
-        if (!element) {
-            // debugger;
-        }
-
-        function _construct(element, event, container) {
-
-
-            var eventMetadata = {
-                screenx: event.screenX,
-                screeny: event.screenY,
-                offsetx: event.offsetX,
-                offsety: event.offsetY,
-                x: event.x,
-                y: event.y,
-                clientX: event.clientX,
-                clientY: event.clientY
-            };
-
-            var targetMetadata = {
-                left: element.offsetLeft,
-                top: element.offsetTop,
-                rect: element.getBoundingClientRect()
-            };
-
-            if (element.nextSibling === Polymer.dom(document.getElementById(element.id))) {
-                this.position = POSITION_BELOW;
-            } else {
-                this.position = this._decideAboveBelow(eventMetadata, targetMetadata);
-            }
-
-            this._buildCoordinates(targetMetadata, this.position);
-
-            this.element = element;
-        };
-        // if (element) {
-        _construct.bind(this)(element, event);
-        // }
-    };
-
-    /**
-     * Decides whether the dragged element should be placed above or below the 
-     * hovered sibling
-     * algorithm:
-     * - get height of element
-     */
-    InsertionPoint.prototype._decideAboveBelow = function(eventMetadata, targetMetadata) {
-        var elementHeight = targetMetadata.rect.height;
-        var yPositionInsideElement = eventMetadata.clientY - targetMetadata.rect.top;
-        if (Math.round(yPositionInsideElement / targetMetadata.rect.height) < 1) {
-            return POSITION_ABOVE;
-        } else {
-            return POSITION_BELOW;
-        }
-    };
-
-    InsertionPoint.prototype._buildCoordinates = function(targetMetadata, position) {
-        if (position === POSITION_ABOVE) {
-            this.coordinates = {
-                top: targetMetadata.rect.top,
-                left: targetMetadata.rect.left,
-                right: targetMetadata.rect.right - targetMetadata.rect.width,
-                width: targetMetadata.rect.width
-            }
-        } else {
-            this.coordinates = {
-                top: targetMetadata.rect.top + targetMetadata.rect.height,
-                left: targetMetadata.rect.left,
-                right: targetMetadata.rect.right - targetMetadata.rect.width,
-                width: targetMetadata.rect.width
-            }
-        }
-    };
-
-
-    var _updateCallBacks = {},
-        _ghost = {},
-        _currentDragTarget,
-        _inDrag = false,
-        _globalDropRegistry,
-        _placeHolder,
-        _draggedData = {};
 
     function generateId(prefix) {
         return prefix + '_' + Math.floor(Math.random() * 100);
-    }
-
-    function setEventData(dragEvent, data) {
-        dragEvent.dataTransfer.setData('text/json', JSON.stringify(data));
     };
 
-    function getEventData(dragEvent) {
-        if (dragEvent.dataTransfer.getData('text/json')) {
-            return JSON.parse(dragEvent.dataTransfer.getData('text/json'));
-        }
-    };
-
-    function registGlobalDrop() {
-        document.addEventListener('drop', function(event) {
-
-        })
-    };
     /**
      * @polymerBehavior DragNDrop.Draggable
      *
@@ -158,7 +37,8 @@
         },
 
         listeners: {
-            'dragstart': 'dragRegisterDragStart'
+            'dragstart': 'dragRegisterDragStart',
+            'dragend': 'cleanUpDrag'
         },
         /**
          * Life cycle
@@ -173,11 +53,15 @@
          * delegations
          */
         _getData: function(event) {
-            return getEventData(event);
+            return DragNDrop.getEventData(event);
         },
 
         _setData: function(event, data) {
-            setEventData(event, data);
+            DragNDrop.setEventData(event, data);
+        },
+
+        _getInDrag: function() {
+            return DragNDrop._inDrag;
         },
 
         /**
@@ -191,18 +75,19 @@
          * @event dragstart
          *
          **/
-        dragRegisterDragStart: function(event) {
-            _inDrag = true;
 
-            if (!getEventData(event)) {
+        dragRegisterDragStart: function(event) {
+            DragNDrop._inDrag = true;
+
+            if (!DragNDrop.EventData.getEventData(event)) {
                 var transferData = {};
                 transferData.elementId = this.id;
-                _currentDragTarget = this.id;
+                DragNDrop.EventData.currentDragTarget = this.id;
                 transferData.dropClass = this.dropTargetClass;
                 var thisRect = this.getBoundingClientRect();
                 var div = document.createElement('div');
                 div.innerHTML = this.innerHTML;
-                var ghostElement = document.createElement('drag-n-drop-ghost');
+                /*var ghostElement = document.createElement('drag-n-drop-ghost');
                 ghostElement.set('dropTargetClass', transferData.dropClass);
                 Polymer.dom(ghostElement).appendChild(div);
                 _ghost = {
@@ -212,12 +97,16 @@
                         width: thisRect.width
                     },
                     placedAt: null
-                };
+                };*/
                 this._setEventDataTransferDragItem(event, transferData);
-                setEventData(event, transferData);
-                _draggedData = transferData;
+                DragNDrop.EventData.setEventData(event, transferData);
+                DragNDrop.EventData.draggedData = transferData;
                 // this.hidden = true;
             }
+        },
+
+        cleanUpDrag: function() {
+            DragNDrop.placeHolder.remove();
         },
 
         /**
@@ -229,324 +118,12 @@
          * of the event 
          * @param {DragEvent} dragstart
          * @param {Object} data Add custom data to the data object 
-         * 
          */
         _setEventDataTransferDragItem: function(event, data) {
             /** implement logic for data driven scenarios here **/
         }
     };
 
-    /**
-     *
-     * @polymerBehavior DragNDrop.DropTarget
-     *
-     */
-    exports.DragNDrop.DropTarget = {
-
-        properties: {
-            dropClass: {
-                type: String,
-                reflectToAttribute: true,
-                notify: false,
-                value: 'default'
-            },
-            showSimpleDragPosition: {
-                type: Boolean,
-                value: true
-            },
-            dropEnabled: {
-                type: Boolean,
-                value: true
-            }
-        },
-
-        listeners: {
-            'dragstart': '_dropRegisterDragStart',
-            'dragover': '_enableDrag',
-            'drop': '_handleDropElement'
-        },
-
-        /**
-         * Life cycle
-         */
-        attached: function() {
-            // register id because that is useful when moving stuff around the dom
-            if (!this.id) {
-                this.id = 'dropTarget_' + Math.floor(Math.random() * 1000);
-            }
-        },
-        /**
-         * delegations
-         */
-        _getData: function(event) {
-            return getEventData(event);
-        },
-
-        _setData: function(event, data) {
-            setEventData(event, data);
-        },
-
-        _setDraggedData: function(data, index, parent) {
-            _draggedData.data = data;
-            _draggedData.index = index;
-            _draggedData.parent = parent;
-        },
-
-        _getDraggedData: function() {
-            return _draggedData;
-        },
-
-        /**
-         * event handlers
-         */
-
-        /**
-         * @event dragstart
-         */
-        _dropRegisterDragStart: function(event) {
-            var transferData = getEventData(event);
-            if (transferData.dropClass === this.dropClass) {
-                transferData.sourceContainer = this.id;
-                var callback = this._getDropCallBack(event);
-                if (typeof(callback) == 'function') {
-                    transferData.sourceCallback = this._registerDropCallBack(callback);
-                }
-                this._addDataDragStartDropTarget(event, transferData);
-                setEventData(event, transferData);
-                event.stopPropagation();
-            }
-        },
-
-        /**
-         * @event drop
-         */
-        _handleDropElement: function(event) {
-            _inDrag = false;
-            var transferData = getEventData(event);
-            if (this.dropClass === transferData.dropClass) {
-                var callback = transferData.sourceCallback;
-                if (typeof(_updateCallBacks[callback]) == 'function') {
-                    _updateCallBacks[callback](event);
-                    delete _updateCallBacks[callback];
-                }
-                this._insertDroppedElement(event);
-                this._removeGhost();
-                event.stopPropagation();
-                event.preventDefault();
-                _currentDragTarget = null;
-            }
-        },
-        /**
-         * @event dragover
-         */
-        _enableDrag: function(event) {
-
-            console.log('this.dropClass: ' + this.dropClass + ', _draggedData.dropClass: ' + _draggedData.dropClass);
-            if (this.dropEnabled === true && this.dropClass === _draggedData.dropClass) {
-                event.preventDefault();
-                event.stopPropagation();
-                this._showDropTarget(event);
-            } else {
-                console.log('you cannot drop me here');
-            }
-        },
-
-        _getDropCallBack: function(event) {
-            // implement if required
-        },
-
-
-        _registerDropCallBack: function(callback) {
-            // register drop call ... useful if the source container is not the 
-            // drop container but data still needs to be updated
-            _updateCallBacks[this.id] = callback;
-            return this.id;
-        },
-
-        _removeGhost: function() {
-            if (this.showSimpleDragPosition) {
-                Polymer.dom(document.body).removeChild(_placeHolder);
-            } else {
-                Polymer.dom(this).removeChild(_ghost.element);
-            }
-        },
-        /**
-         * methods meant for @override by using elements
-         */
-
-        /**
-         * Provides custom data to be attached to the DataTransfer object 
-         * of the event 
-         * @param {DragEvent} dragstart
-         * @param {Object} data Add custom data to the data object 
-         * 
-         */
-        _addDataDragStartDropTarget: function(event, transferData) {
-            // append data required for drop handling
-        },
-
-        _updateContent: function(event) {
-            console.log('i will do something: ' + this.id);
-        },
-
-        /**
-         * Manage the insertion of a element to be droppend
-         * @param {DropEvent} event
-         */
-        _insertDroppedElement: function(event) {
-            var transferData = getEventData(event);
-            var insertionPoint = this._getInsertionPoint(event);
-            var elementToInsert = document.getElementById(transferData.elementId);
-            // this._insertElement(elementToInsert, insertionPoint);
-            if (insertionPoint.element.id === 'wrapper') {
-                Polymer.dom(this).appendChild(elementToInsert);
-            } else {
-                if (insertionPoint.position === POSITION_ABOVE) {
-                    if (elementToInsert !== insertionPoint.element) {
-                        Polymer.dom(this).insertBefore(elementToInsert, insertionPoint.element);
-                    }
-                } else if (insertionPoint.position === POSITION_BELOW) {
-                    if (elementToInsert !== Polymer.dom(insertionPoint.element).nextSibling) {
-                        Polymer.dom(this).insertBefore(elementToInsert, Polymer.dom(insertionPoint.element).nextSibling);
-                    }
-                }
-            }
-        },
-
-        /**
-         * Finds the insertion point, be it for the dopped element or the ghost
-         * @param {DragEvent} event
-         * @returns {InsertionPoint} 
-         */
-        _getInsertionPoint: function(event) {
-            var elementId = _currentDragTarget;
-            var insertBeforeElement = this._findEventTargetSibling(event.target);
-            if (insertBeforeElement === _ghost.element) {
-                return;
-            } else if (insertBeforeElement) {
-                return new InsertionPoint(insertBeforeElement, event);
-            } else {
-                if (this.$.wrapper) {
-                    return new InsertionPoint(this.$.wrapper, event);
-                } else {
-                    return;
-                }
-            }
-        },
-
-
-        _getParentPolymerElement: function(element, dropClass) {
-            if (Polymer.dom(element).node.dropTargetClass === dropClass) {
-                return Polymer.dom(element).node;
-            } else if (Polymer.dom(element).node.host) { // found a polymer element
-                if (Polymer.dom(element).node.host.dropTargetClass === dropClass || element.nodeName === 'DRAG-N-DROP-GHOST') {
-                    if (element.nodeName === 'DRAG-N-DROP-GHOST') {
-                        console.log('HOVERED A GHOST');
-                    }
-                    return Polymer.dom(element).node.host; // got it ...
-                } else if (Polymer.dom(element).parentNode) {
-                    return this._getParentPolymerElement(Polymer.dom(element).parentNode, dropClass); // recursion
-                } else {
-                    return this._getParentPolymerElement(Polymer.dom(element).node.host.parentNode, dropClass); // recursion
-                }
-            } else if (Polymer.dom(element).parentNode === null) {
-                return; // exit recursion
-            } else {
-                return this._getParentPolymerElement(Polymer.dom(element).parentNode, dropClass); // recursion
-            }
-        },
-
-        _findEventTargetSibling: function(dropTarget) {
-            var compareTargetClass = this.dropClass;
-            var polymerElement = this._getParentPolymerElement(dropTarget, compareTargetClass);
-            return polymerElement;
-        },
-
-        _insertElement: function(element, insertionPoint) {
-            console.log(insertionPoint.position);
-            switch (insertionPoint.position) {
-                case POSITION_ABOVE:
-                    Polymer.dom(this).insertBefore(element, insertionPoint.element);
-                    break;
-                case POSITION_BELOW:
-                    Polymer.dom(this).insertBefore(element, Polymer.dom(insertionPoint.element).nextSibling);
-                    // Polymer.dom(this).insertBefore(Polymer.dom(element).nextSibling, insertionPoint.element);
-                    break;
-                case POSITION_APPEND_INSIDE:
-                    Polymer.dom(insertionPoint.element).appendChild(element);
-                    break;
-            }
-        },
-
-        _getPlaceHolder: function() {
-            if (!_placeHolder) {
-                _placeHolder = document.createElement('div');
-                _placeHolder.style.border = '1px solid #ff0000';
-                // _placeHolder.style.height = '10px';
-                _placeHolder.style.position = 'fixed';
-                _placeHolder.style['z-index'] = '100';
-                _placeHolder.classList.add('dragNDropGhost');
-            }
-            return _placeHolder;
-        },
-
-        _showDropTarget: function(event) {
-            if (_inDrag === true) {
-                // dataTransfer is in protected mode at this stage, so do not try
-                // to interact with it
-                var insertionPoint = this._getInsertionPoint(event);
-                if (this.showSimpleDragPosition) {
-                    var placeHolder = this._getPlaceHolder();
-                    placeHolder.style.top = insertionPoint.coordinates.top + 'px';
-                    placeHolder.style.left = insertionPoint.coordinates.left + 'px';
-                    placeHolder.style.width = insertionPoint.coordinates.width + 'px';
-                    placeHolder.style['pointer-events'] = 'none';
-                    Polymer.dom(document.body).appendChild(placeHolder);
-                } else {
-                    var transferData = getEventData(event);
-                    if (insertionPoint.element !== _ghost.element) {
-                        this._insertElement(_ghost.element, insertionPoint);
-                    }
-                }
-                event.preventDefault();
-                event.stopPropagation();
-            }
-        }
-    }
+    
 })(window)
 </script>
-<dom-module id="drag-n-drop-ghost">
-    <template>
-        <style>
-        div {
-            background-color: #aaa;
-            opacity: 0.5;
-        }
-        </style>
-        <div>
-            <content>
-            </content>
-        </div>
-    </template>
-    <script>
-    Polymer({
-        is: 'drag-n-drop-ghost',
-        properties: {},
-        behaviors: [DragNDrop.Draggable],
-
-        ready: function() {
-            this.id = 'ghost_' + Math.floor(Math.random() * 100);
-        },
-
-        listeners: {
-            'dragover': '_stopPropagation'
-        },
-
-        _stopPropagation: function(event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-
-    })
-    </script>
-</dom-module>

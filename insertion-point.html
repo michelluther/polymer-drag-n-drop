@@ -1,0 +1,109 @@
+<script type="text/javascript">
+	
+(function(exports){
+
+	if (!exports.DragNDrop) {
+        exports.DragNDrop = {};
+    };
+
+
+
+    var position = {
+    	above: 'above',
+    	below: 'below',
+    	append_inside: 'append_inside'
+    };
+
+    exports.DragNDrop.position = position;
+
+	function InsertionPoint(element, event) {
+
+        /**
+         * @property {string} position Can be 'above', 'below', 'append-inside'
+         */
+        this.position = '';
+        /**
+         * @property {PolymerElement} element Element to be inserted before or after 
+         */
+        this.element = {};
+
+        this.coordinates = {};
+
+        if (!element) {
+            // debugger;
+        }
+
+        function _construct(element, event, container) {
+
+
+            var eventMetadata = {
+                screenx: event.screenX,
+                screeny: event.screenY,
+                offsetx: event.offsetX,
+                offsety: event.offsetY,
+                x: event.x,
+                y: event.y,
+                clientX: event.clientX,
+                clientY: event.clientY
+            };
+
+            var targetMetadata = {
+                left: element.offsetLeft,
+                top: element.offsetTop,
+                rect: element.getBoundingClientRect()
+            };
+
+            if (element.nextSibling === Polymer.dom(document.getElementById(element.id))) {
+                this.position = position.below;
+            } else {
+                this.position = this._decideAboveBelow(eventMetadata, targetMetadata);
+            }
+
+            this._buildCoordinates(targetMetadata, this.position);
+
+            this.element = element;
+        };
+        // if (element) {
+        _construct.bind(this)(element, event);
+        // }
+    };
+
+    /**
+     * Decides whether the dragged element should be placed above or below the 
+     * hovered sibling
+     * algorithm:
+     * - get height of element
+     */
+    InsertionPoint.prototype._decideAboveBelow = function(eventMetadata, targetMetadata) {
+        var elementHeight = targetMetadata.rect.height;
+        var yPositionInsideElement = eventMetadata.clientY - targetMetadata.rect.top;
+        if (Math.round(yPositionInsideElement / targetMetadata.rect.height) < 1) {
+            return position.above;
+        } else {
+            return position.below;
+        }
+    };
+
+    InsertionPoint.prototype._buildCoordinates = function(targetMetadata, insertionPosition) {
+        if (insertionPosition === position.above) {
+            this.coordinates = {
+                top: targetMetadata.rect.top,
+                left: targetMetadata.rect.left,
+                right: targetMetadata.rect.right - targetMetadata.rect.width,
+                width: targetMetadata.rect.width
+            }
+        } else {
+            this.coordinates = {
+                top: targetMetadata.rect.top + targetMetadata.rect.height,
+                left: targetMetadata.rect.left,
+                right: targetMetadata.rect.right - targetMetadata.rect.width,
+                width: targetMetadata.rect.width
+            }
+        }
+    };
+
+    exports.DragNDrop.InsertionPoint = InsertionPoint;
+
+})(window)
+
+</script>

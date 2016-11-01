@@ -1,0 +1,103 @@
+<style type="text/css">
+.dragNDropGhost {
+    position: absolute;
+    border-bottom: 2px solid #ff0000;
+    height: 2px;
+}
+</style>
+<script>
+(function(exports) {
+
+    if (!exports.DragNDrop) {
+        exports.DragNDrop = {};
+    };
+
+    exports.DragNDrop.ghost = {};
+
+    /** a simple placeholder **/
+    var placeHolder = {
+
+        element: null,
+
+        createElement: function() {
+            var placeHolder = document.createElement('div');
+            placeHolder.style.border = '1px solid #ff0000';
+            placeHolder.style.position = 'fixed';
+            placeHolder.style['z-index'] = '100';
+            placeHolder.classList.add('dragNDropGhost');
+            this.element = placeHolder;
+        },
+
+        place: function(insertionPoint) {
+            this.element.style.top = insertionPoint.coordinates.top + 'px';
+            this.element.style.left = insertionPoint.coordinates.left + 'px';
+            this.element.style.width = insertionPoint.coordinates.width + 'px';
+            this.element.style['pointer-events'] = 'none';
+            Polymer.dom(document.body).appendChild(this.element);
+        },
+
+        remove: function(){
+            Polymer.dom(document.body).removeChild(this.element);
+        }
+    }
+
+    exports.DragNDrop.placeHolder = placeHolder;
+
+    /** more than just a simple placeholder ... **/
+    function DragNDropGhost(simple) {
+
+        this.simple = simple;
+
+    };
+
+    DragNDropGhost.prototype.place = function(insertionPoint) {
+
+    };
+
+    DragNDropGhost.prototype.remove = function() {
+        if (this.simple) {
+            Polymer.dom(document.body).removeChild(_placeHolder);
+        } else {
+            Polymer.dom(this).removeChild(_ghost.element);
+        }
+    };
+
+
+    exports.DragNDrop.Ghost = DragNDropGhost;
+})(window)
+</script>
+<dom-module id="drag-n-drop-ghost">
+    <template>
+        <style>
+        div {
+            background-color: #aaa;
+            opacity: 0.5;
+        }
+        </style>
+        <div>
+            <content>
+            </content>
+        </div>
+    </template>
+    <script>
+    Polymer({
+        is: 'drag-n-drop-ghost',
+        properties: {},
+        behaviors: [DragNDrop.Draggable],
+
+        ready: function() {
+            this.id = 'ghost_' + Math.floor(Math.random() * 100);
+        },
+
+        listeners: {
+            'dragover': '_stopPropagation'
+        },
+
+        _stopPropagation: function(event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+
+    })
+    </script>
+</dom-module>

@@ -1,0 +1,25 @@
+<script type="text/javascript">
+(function(exports) {
+    'use strict';
+
+    if (!exports.DragNDrop) {
+        exports.DragNDrop = {};
+    };
+
+    var EventData = {
+
+        setEventData: function(dragEvent, data) {
+            dragEvent.dataTransfer.setData('text/json', JSON.stringify(data));
+        },
+
+        getEventData: function(dragEvent) {
+            if (dragEvent.dataTransfer.getData('text/json')) {
+                return JSON.parse(dragEvent.dataTransfer.getData('text/json'));
+            }
+        }
+    };
+
+    exports.DragNDrop.EventData = EventData;
+
+})(window)
+</script>

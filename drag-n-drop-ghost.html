@@ -1,0 +1,38 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="draggable-behavior.html">
+<dom-module id="drag-n-drop-ghost">
+    <template>
+        <style>
+        div {
+            background-color: #aaa;
+            opacity: 0.5;
+        }
+        </style>
+        <div>
+            <content>
+            </content>
+        </div>
+    </template>
+    <script>
+    Polymer({
+        is: 'drag-n-drop-ghost',
+        properties: {},
+        behaviors: [DragNDrop.Draggable],
+
+        ready: function() {
+            this.id = 'ghost_' + Math.floor(Math.random() * 100);
+        },
+
+        listeners: {
+            'dragover': '_stopPropagation'
+        },
+
+        _stopPropagation: function(event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+
+
+    })
+    </script>
+</dom-module>
