@@ -7,7 +7,7 @@
         exports.DragNDrop = {};
     };
 
-    var DragNDrop = exports.DragNDrop;    
+    var DragNDrop = exports.DragNDrop;
     DragNDrop._inDrag = false;
 
 
@@ -31,7 +31,10 @@
                 type: Boolean,
                 value: true
             },
-            dropTargetElementId: {
+            dragSourceElementId: {
+                type: String
+            },
+            itemIndex: {
                 type: String
             }
         },
@@ -87,26 +90,17 @@
                 var thisRect = this.getBoundingClientRect();
                 var div = document.createElement('div');
                 div.innerHTML = this.innerHTML;
-                /*var ghostElement = document.createElement('drag-n-drop-ghost');
-                ghostElement.set('dropTargetClass', transferData.dropClass);
-                Polymer.dom(ghostElement).appendChild(div);
-                _ghost = {
-                    element: ghostElement,
-                    rect: {
-                        height: thisRect.height,
-                        width: thisRect.width
-                    },
-                    placedAt: null
-                };*/
                 this._setEventDataTransferDragItem(event, transferData);
                 DragNDrop.EventData.setEventData(event, transferData);
                 DragNDrop.EventData.draggedData = transferData;
-                // this.hidden = true;
             }
         },
 
-        cleanUpDrag: function() {
-            DragNDrop.placeHolder.remove();
+        cleanUpDrag: function(event) {
+            clearInterval(DragNDrop.timer);
+            if (DragNDrop.EventData.draggedData.elementId === this.id) {
+                DragNDrop.placeHolder.remove();
+            }
         },
 
         /**
@@ -124,6 +118,6 @@
         }
     };
 
-    
+
 })(window)
 </script>

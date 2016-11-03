@@ -23,12 +23,17 @@
             var placeHolder = document.createElement('div');
             placeHolder.style.border = '1px solid #ff0000';
             placeHolder.style.position = 'fixed';
+            placeHolder.style.height = '0';
             placeHolder.style['z-index'] = '100';
+            // placeHolder.style.transition = 'transition: position 0.3s;'
+
             placeHolder.classList.add('dragNDropGhost');
             this.element = placeHolder;
         },
 
         place: function(insertionPoint) {
+            this.element.style.transition = 'top 0.1s ease-in-out';
+            this.element.style['moz-transition'] = 'top 0.1s ease-in-out';
             this.element.style.top = insertionPoint.coordinates.top + 'px';
             this.element.style.left = insertionPoint.coordinates.left + 'px';
             this.element.style.width = insertionPoint.coordinates.width + 'px';

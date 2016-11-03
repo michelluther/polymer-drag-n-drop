@@ -7,8 +7,31 @@
 
     var DragNDrop = exports.DragNDrop;
 
+    DragNDrop.timer = null;
+    DragNDrop.latestEvent = {};
+
     var _updateCallBacks = {};
 
+    function showDropTarget(event) {
+        if (DragNDrop._inDrag === true) {
+            // dataTransfer is in protected mode at this stage, so do not try
+            // to interact with it
+            var insertionPoint = this._getInsertionPoint(event);
+            if (this.showSimpleDragPosition) {
+                var placeHolder = this._getPlaceHolder();
+                placeHolder.place(insertionPoint);
+            } else {
+                var transferData = DragNDrop.EventData.getEventData(event);
+                if (insertionPoint.element !== DragNDrop.ghost.element) {
+                    this._insertElement(DragNDrop.ghost.element, insertionPoint);
+                }
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    };
+
+    // DragNDrop.
     /**
      *
      * @polymerBehavior DragNDrop.DropTarget
@@ -87,6 +110,17 @@
                 this._addDataDragStartDropTarget(event, transferData);
                 DragNDrop.EventData.setEventData(event, transferData);
                 event.stopPropagation();
+                // event.preventDefault();
+                DragNDrop.timer = setInterval(this._showPlaceholder, 200);
+            }
+        },
+
+        _showPlaceholder: function() {
+            // console.log('i will show stuff');
+            if (DragNDrop.latestEvent.event) {
+                // var useLatestEvent = DragNDrop.latestEvent;
+                showDropTarget.apply(DragNDrop.latestEvent.context, [DragNDrop.latestEvent.event]);
+                // DragNDrop.latestEvent = null;
             }
         },
 
@@ -94,38 +128,42 @@
          * @event drop
          */
         _handleDropElement: function(event) {
-            DragNDrop._inDrag = false;
-            var transferData = DragNDrop.EventData.getEventData(event);
-            if (this.dropClass === transferData.dropClass) {
-                var callback = transferData.sourceCallback;
-                if (typeof(_updateCallBacks[callback]) == 'function') {
-                    _updateCallBacks[callback](event);
-                    delete _updateCallBacks[callback];
+
+            if (DragNDrop._inDrag) {
+                var transferData = DragNDrop.EventData.getEventData(event);
+                if (this.dropClass === transferData.dropClass) {
+                    DragNDrop._inDrag = false;
+                    var callback = transferData.sourceCallback;
+                    if (typeof(_updateCallBacks[callback]) == 'function') {
+                        _updateCallBacks[callback](event);
+                        delete _updateCallBacks[callback];
+                    }
+                    this._insertDroppedElement(event);
+                    // this._removeGhost();
+                    event.stopPropagation();
+                    event.preventDefault();
+                    DragNDrop.EventData.currentDragTarget = null;
                 }
-                this._insertDroppedElement(event);
-                this._removeGhost();
-                event.stopPropagation();
-                event.preventDefault();
-                DragNDrop.EventData.currentDragTarget = null;
             }
         },
         /**
          * @event dragover
          */
         _enableDrag: function(event) {
+            if (DragNDrop._inDrag) {
 
-            console.log('this.dropClass: ' + this.dropClass + ', _draggedData.dropClass: ' + DragNDrop.EventData.draggedData.dropClass);
-            if (this.dropEnabled === true && this.dropClass === DragNDrop.EventData.draggedData.dropClass) {
-                event.preventDefault();
-                event.stopPropagation();
-                this._showDropTarget(event);
-            } else {
-                console.log('you cannot drop me here');
+                // console.log('this.dropClass: ' + this.dropClass + ', _draggedData.dropClass: ' + DragNDrop.EventData.draggedData.dropClass);
+                if (this.dropEnabled === true && this.dropClass === DragNDrop.EventData.draggedData.dropClass) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    DragNDrop.latestEvent.event = event;
+                    DragNDrop.latestEvent.context = this;
+                    // this._showDropTarget(useLatestEvent);
+                    // console.log('you can drop me here');
+                } else {
+                    // console.log('you cannot drop me here');
+                }
             }
-        },
-
-        _getDropCallBack: function(event) {
-            // implement if required
         },
 
 
@@ -159,7 +197,11 @@
         },
 
         _updateContent: function(event) {
-            console.log('i will do something: ' + this.id);
+            // console.log('i will do something: ' + this.id);
+        },
+
+        _getDropCallBack: function(event) {
+            // implement if required
         },
 
         /**
@@ -232,7 +274,6 @@
         },
 
         _insertElement: function(element, insertionPoint) {
-            console.log(insertionPoint.position);
             switch (insertionPoint.position) {
                 case DragNDrop.position.above:
                     Polymer.dom(this).insertBefore(element, insertionPoint.element);
@@ -248,9 +289,9 @@
         },
 
         _getPlaceHolder: function() {
-        	if(!DragNDrop.placeHolder.element){
-        		!DragNDrop.placeHolder.createElement();
-        	}
+            if (!DragNDrop.placeHolder.element) {
+                !DragNDrop.placeHolder.createElement();
+            }
             return DragNDrop.placeHolder;
         },
 
