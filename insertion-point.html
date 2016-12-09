@@ -1,22 +1,117 @@
 <script type="text/javascript">
-	
-(function(exports){
+(function(exports) {
 
-	if (!exports.DragNDrop) {
-        exports.DragNDrop = {};
+    var domSearcher = {
+        searchParent: function(dn) {
+            var i = 0;
+            while (this._searchParentAlgorithm[i].cond(dn) === false) {
+                i++;
+            }
+            return this._searchParentAlgorithm[i].value(dn);
+        },
+        _searchParentAlgorithm: [{
+                cond: function(dn) {
+                    return dn === document;
+                },
+                value: function(dn) {
+                    return null;
+                }
+            }, {
+                cond: function(dn) {
+                    return dn.parentElement !== null;
+                },
+                value: function(dn) {
+                    return dn.parentElement;
+                }
+            }, {
+                cond: function(dn) {
+                    return dn.parentNode !== null;
+                },
+                value: function(dn) {
+                    return domSearcher.searchParent(dn.parentNode);
+                }
+            }, {
+                cond: function(dn) {
+                    return true; // if everything else failed
+                },
+                value: function(dn) {
+                    return domSearcher.searchParent(Polymer.dom(dn).node.host);
+                }
+            }
+
+        ]
     };
 
 
+    if (!exports.DragNDrop) {
+        exports.DragNDrop = {};
+    }
 
     var position = {
-    	above: 'above',
-    	below: 'below',
-    	append_inside: 'append_inside'
+        above: {
+            name: 'above',
+            getCoordinates: function(targetMetadata) {
+                return {
+                    top: targetMetadata.rect.top,
+                    left: targetMetadata.rect.left,
+                    right: targetMetadata.rect.right - targetMetadata.rect.width,
+                    width: targetMetadata.rect.width
+                };
+            },
+            insertElement: function(element, insertionPoint) {
+                if (insertionPoint.element.getAttribute('id') === insertionPoint.parent.dropTargetWrapperId) {
+                    position.append_inside_ontop.insertElement(element, insertionPoint);
+                } else {
+                    Polymer.dom(insertionPoint.parent).insertBefore(element, insertionPoint.element);
+                }
+            }
+        },
+        below: {
+            name: 'below',
+            getCoordinates: function(targetMetadata) {
+                return {
+                    top: targetMetadata.rect.top + targetMetadata.rect.height,
+                    left: targetMetadata.rect.left,
+                    right: targetMetadata.rect.right - targetMetadata.rect.width,
+                    width: targetMetadata.rect.width
+                };
+            },
+            insertElement: function(element, insertionPoint) {
+                if (insertionPoint.element.nextElementSibling && insertionPoint.element.getAttribute('id') !== insertionPoint.parent.dropTargetWrapperId) {
+                    Polymer.dom(insertionPoint.parent).insertBefore(element, Polymer.dom(insertionPoint.element).nextElementSibling);
+                } else {
+                    Polymer.dom(insertionPoint.parent).appendChild(element);
+                }
+            }
+        },
+        append_inside: {
+            name: 'append_inside',
+            getCoordinates: function(targetMetadata) {
+                return {};
+            },
+            insertElement: function(element, insertionPoint) {
+                Polymer.dom(insertionPoint.parent).appendChild(element);
+            }
+        },
+        append_inside_ontop: {
+            name: 'append_inside_ontop',
+            getCoordinates: function(targetMetadata) {
+                return {};
+            },
+            insertElement: function(element, insertionPoint) {
+                if(insertionPoint.element.childElementCount === 0){
+                    position.append_inside.insertElement(element, insertionPoint);
+                } else {
+                    Polymer.dom(insertionPoint.parent).insertBefore(element, insertionPoint.element.children[0]);
+                }
+            }
+        }
+
     };
 
     exports.DragNDrop.position = position;
 
-	function InsertionPoint(element, event) {
+    function InsertionPoint(element, event, parent, dropClass) {
 
         /**
          * @property {string} position Can be 'above', 'below', 'append-inside'
@@ -27,14 +122,13 @@
          */
         this.element = {};
 
-        this.coordinates = {};
+        this.parent = parent;
 
-        if (!element) {
-            // debugger;
-        }
+        this.coordinates = {};
 
         function _construct(element, event, container) {
 
+            this.element = this._getParentPolymerElement(element, dropClass);
 
             var eventMetadata = {
                 screenx: event.screenX,
@@ -46,27 +140,17 @@
                 clientX: event.clientX,
                 clientY: event.clientY
             };
-
-            var targetMetadata = {
-                left: element.offsetLeft,
-                top: element.offsetTop,
-                rect: element.getBoundingClientRect()
+            var targetMetadata = this.element === null ? {} : {
+                left: this.element.offsetLeft,
+                top: this.element.offsetTop,
+                rect: this.element.getBoundingClientRect()
             };
 
-            if (element.nextSibling === Polymer.dom(document.getElementById(element.id))) {
-                this.position = position.below;
-            } else {
-                this.position = this._decideAboveBelow(eventMetadata, targetMetadata);
-            }
-
-            this._buildCoordinates(targetMetadata, this.position);
-
-            this.element = element;
-        };
-        // if (element) {
+            this.position = this.element === null ? position.append_inside : this._decideAboveBelow(eventMetadata, targetMetadata);
+            this.coordinates = this.position.getCoordinates(targetMetadata);
+        }
         _construct.bind(this)(element, event);
-        // }
-    };
+    }
 
     /**
      * Decides whether the dragged element should be placed above or below the 
@@ -84,26 +168,32 @@
         }
     };
 
-    InsertionPoint.prototype._buildCoordinates = function(targetMetadata, insertionPosition) {
-        if (insertionPosition === position.above) {
-            this.coordinates = {
-                top: targetMetadata.rect.top,
-                left: targetMetadata.rect.left,
-                right: targetMetadata.rect.right - targetMetadata.rect.width,
-                width: targetMetadata.rect.width
+    InsertionPoint.prototype._getParentPolymerElement = function(element, dropClass) {
+
+        if (!element) {
+            return this._getDropTargetWrapper(this.parent);
+        }
+
+        if (element.dropTargetClass === dropClass) {
+            return element;
+        } else if (element.host) { // found a polymer element
+            if (element.host.dropTargetClass === dropClass) {
+                return element.node.host; // got it ...
+            } else {
+                return this._getParentPolymerElement(domSearcher.searchParent(element), dropClass); // recursion
             }
         } else {
-            this.coordinates = {
-                top: targetMetadata.rect.top + targetMetadata.rect.height,
-                left: targetMetadata.rect.left,
-                right: targetMetadata.rect.right - targetMetadata.rect.width,
-                width: targetMetadata.rect.width
-            }
+            return this._getParentPolymerElement(domSearcher.searchParent(element), dropClass); // recursion
         }
+    };
+
+    InsertionPoint.prototype._getDropTargetWrapper = function(parent) {
+        return parent.$[parent.dropTargetWrapperId] ?
+            parent.$[parent.dropTargetWrapperId] : Polymer.dom(parent).queryEffectiveChildren('#' + parent.dropTargetWrapperId);
+
     };
 
     exports.DragNDrop.InsertionPoint = InsertionPoint;
 
 })(window)
-
 </script>
