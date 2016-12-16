@@ -129,6 +129,9 @@
         function _construct(element, event, container) {
 
             this.element = this._getParentPolymerElement(element, dropClass);
+            if(this.element.draggableenabled === false){
+                return null;
+            }
 
             var eventMetadata = {
                 screenx: event.screenX,

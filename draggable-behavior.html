@@ -1,4 +1,4 @@
-<link rel="import" href="../polymer/polymer.html">
+<!-- <link rel="import" href="../polymer/polymer.html"> -->
 <script>
 (function(exports) {
     'use strict';
@@ -27,9 +27,10 @@
                 notify: false,
                 value: 'default'
             },
-            draggableEnabled: {
+            draggableenabled: {
                 type: Boolean,
-                value: true
+                value: true,
+                reflectToAttribute: true
             },
             dragSourceElementId: {
                 type: String
