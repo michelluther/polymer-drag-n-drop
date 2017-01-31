@@ -2,6 +2,9 @@
 (function(exports) {
     'use strict';
 
+    // dataType needs to be different on IE .... seriously!
+    var dataType = (window.navigator.userAgent.indexOf('Trident') > 0) ? 'Text' : 'text/json';
+
     if (!exports.DragNDrop) {
         exports.DragNDrop = {};
     };
@@ -9,12 +12,15 @@
     var EventData = {
 
         setEventData: function(dragEvent, data) {
-            dragEvent.dataTransfer.setData('text/json', JSON.stringify(data));
+            // debugger;
+            dragEvent.dataTransfer.setData(dataType, JSON.stringify(data));
         },
 
         getEventData: function(dragEvent) {
-            if (dragEvent.dataTransfer.getData('text/json')) {
-                return JSON.parse(dragEvent.dataTransfer.getData('text/json'));
+            // debugger;
+            if (dragEvent.dataTransfer.getData(dataType)) {
+                console.log(JSON.parse(dragEvent.dataTransfer.getData(dataType)));
+                return JSON.parse(dragEvent.dataTransfer.getData(dataType));
             }
         }
     };

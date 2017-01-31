@@ -13,6 +13,7 @@
     var _updateCallBacks = {};
 
     function showDropTarget(event) {
+        //debugger;
         if (DragNDrop._inDrag === true) {
             // dataTransfer is in protected mode at this stage, so do not try
             // to interact with it
@@ -57,6 +58,7 @@
         },
 
         listeners: {
+            'dragenter': '_enableDrag',
             'dragstart': '_dropRegisterDragStart',
             'dragover': '_enableDrag',
             'drop': '_handleDropElement'
@@ -106,6 +108,7 @@
          * @event dragstart
          */
         _dropRegisterDragStart: function(event) {
+            // debugger;
             var transferData = DragNDrop.EventData.getEventData(event);
             if (transferData.dropClass === this.dropClass) {
                 transferData.sourceContainer = this.id;
@@ -154,6 +157,7 @@
          * @event dragover
          */
         _enableDrag: function(event) {
+            // debugger;
             if (DragNDrop._inDrag && this.dropEnabled === true && this.dropClass === DragNDrop.EventData.draggedData.dropClass) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -207,6 +211,7 @@
         _insertDroppedElement: function(event) {
             var transferData = DragNDrop.EventData.getEventData(event);
             var insertionPoint = this._getInsertionPoint(event);
+            
             var elementToInsert = document.getElementById(transferData.elementId);
             insertionPoint.position.insertElement(elementToInsert, insertionPoint);
         },
@@ -223,7 +228,9 @@
         },
 
         _getPlaceHolder: function() {
+            // debugger;
             if (!DragNDrop.placeHolder.element) {
+                // debugger;
                 !DragNDrop.placeHolder.createElement();
             }
             return DragNDrop.placeHolder;

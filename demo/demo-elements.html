@@ -1,0 +1,249 @@
+<link rel="import" href="../polymer-drag-n-drop.html">
+<dom-module id="draggable-element">
+    <template>
+        <style type="text/css">
+        :host {
+            display: block;
+        }
+        
+        div {
+            background-color: #fff;
+            padding: 5px;
+            margin: 0px;
+            border: 1px solid #bbb;
+        }
+        </style>
+        <div draggable="true">
+            <p>{{text}}</p>
+        </div>
+    </template>
+    <script type="text/javascript">
+    (function() {
+        Polymer({
+            is: 'draggable-element',
+            behaviors: [DragNDrop.Draggable],
+            properties: {
+                text: {
+                    type: String,
+                    reflectToAttribute: true
+                }
+            },
+
+
+        });
+    })();
+    </script>
+</dom-module>
+<dom-module id="drop-target-element">
+    <template>
+        <style type="text/css">
+        :host {
+            background: #eee;
+            border: 1px solid #999;
+            padding: 5px;
+            display: block;
+        }
+        
+        .wrapper {
+            display: block;
+            background-color: #efefef;
+            /*border: 1px solid #fff;*/
+        }
+        </style>
+        <h4>{{heading}}</h4>
+        <p>The items will drop between here ...</p>
+        <div id="wrapper">
+            <content></content>
+        </div>
+        <p>.. and here</p>
+    </template>
+    <script type="text/javascript">
+    (function() {
+        Polymer({
+            is: 'drop-target-element',
+            behaviors: [DragNDrop.DropTarget],
+            properties: {
+                heading: {
+                    type: String
+                }
+            },
+            ready: function() {
+                this.dropTargetElementId = 'wrapper';
+            }
+        });
+    })();
+    </script>
+</dom-module>
+<dom-module id="draggable-drop-target-element">
+    <template>
+        <style type="text/css">
+        :host {
+            background: #aaa;
+            border: 1px solid #999;
+            padding: 5px;
+            display: block;
+            margin: 5px;
+        }
+        
+        .wrapper {
+            display: block;
+            background-color: #efefef;
+            border: 1px solid #fff;
+        }
+        </style>
+        <div draggable="true">
+            <h5>{{heading}}</h5>
+            <p>The items will drop between here ...</p>
+            <div id="wrapper">
+                <content></content>
+            </div>
+        </div>
+        <p>.. and here</p>
+        </div>
+    </template>
+    <script type="text/javascript">
+    (function() {
+        Polymer({
+            is: 'draggable-drop-target-element',
+            behaviors: [DragNDrop.Draggable, DragNDrop.DropTarget],
+            properties: {
+                heading: {
+                    type: String
+                }
+            }
+        });
+    })();
+    </script>
+</dom-module>
+<dom-module id="animal-element">
+    <template>
+        <div class$="{{getGhostClassClass(ghostClass)}}" draggable="true" style="padding:1em;">
+            <p>{{text}}</p>
+        </div>
+    </template>
+    <script>
+    Polymer({
+        is: 'animal-element',
+        behaviors: [DragNDrop.Draggable],
+        properties: {
+            ghostClass: {
+                type: String,
+                value: ""
+            },
+            text: {
+                type: String,
+                reflectToAttribute: true
+            }
+        },
+
+        listeners: {
+            'dragover': '_stopPropagation'
+        },
+
+        _stopPropagation: function(event) {
+            // debugger;
+            // if (this.ghostClass == 'ghost') {
+            //     debugger;
+            //     event.stopPropagation();
+            //     event.preventDefault();
+            // }
+        },
+
+        attached: function() {
+            console.log('i was attached');
+        },
+
+        getGhostClassClass: function(ghostClass) {
+            return 'huu';
+        }
+    });
+    </script>
+</dom-module>
+<dom-module id="animal-repeater">
+    <template>
+        <h4>{{category}}</h4>
+        <div id="wrapper" style="display:block">
+            <template is="dom-repeat" items="{{animals}}">
+                <animal-element drop-target-class="{{drop-class}}" text="{{item.name}}" id="{{_getAnimalElementId(item.id)}}">
+                </animal-element>
+            </template>
+        </div>
+    </template>
+    <script type="text/javascript">
+    (function() {
+
+        Polymer({
+            is: 'animal-repeater',
+            behaviors: [DragNDrop.DataDrivenDropTarget],
+
+            properties: {
+                animals: {
+                    type: Array
+                },
+                category: {
+                    type: String
+                }
+            },
+
+            _addDataDragStartDropTarget: function(event, data) {
+                var animal_id = data.elementId.split('_')[1];
+                var boundData;
+                for (var i = 0; i < this.animals.length; i++) {
+                    if (this.animals[i].id === animal_id) {
+                        boundData = this.animals[i];
+                        continue;
+                    }
+                };
+                data.boundData = boundData;
+                this._setDraggedData(boundData, i, this.id);
+            },
+
+            _getDropCallBack: function(event) {
+                return this._removeElement.bind(this);
+            },
+
+            _insertDroppedElement: function(event) {
+                var dropData = this._getData(event);
+                var insertionPoint = this._getInsertionPoint(event);
+                var insertionPointIndex = this._getInsertionPointIndex(insertionPoint);
+                if (insertionPoint.position === 'append-inside') {
+                    this.push('animals', dropData.boundData);
+                } else {
+                    this.splice('animals', insertionPointIndex, 0, dropData.boundData);
+                }
+            },
+
+            _getInsertionPointIndex: function(insertionPoint) {
+                var animal_id = insertionPoint.element.id.split('_')[1];
+                for (var i = 0; i < this.animals.length; i++) {
+                    if (this.animals[i].id === animal_id) {
+                        if (insertionPoint.position === 'above') {
+                            return i;
+                        } else {
+                            return i + 1;
+                        }
+                    }
+                }
+            },
+
+            _removeElement: function(event) {
+                var dropData = this._getData(event);
+                var animal_id = dropData.boundData.id;
+                var arrayIndex;
+                for (var i = 0; i < this.animals.length; i++) {
+                    if (this.animals[i].id === animal_id) {
+                        arrayIndex = i;
+                        continue;
+                    }
+                };
+                this.splice('animals', arrayIndex, 1);
+            },
+
+            _getAnimalElementId: function(animalId) {
+                return 'animal_' + animalId;
+            }
+
+        });
+    })()
+    </script>
+</dom-module>
