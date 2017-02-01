@@ -146,7 +146,7 @@
             }
         },
 
-        _callDropCallBack(callbackName, event) {
+        _callDropCallBack: function(callbackName, event) {
             if (typeof(_updateCallBacks[callbackName]) == 'function') {
                 _updateCallBacks[callbackName](event);
                 delete _updateCallBacks[callbackName];
