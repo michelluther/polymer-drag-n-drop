@@ -41,8 +41,8 @@
         },
 
         listeners: {
-            'dragstart': 'dragRegisterDragStart',
-            'dragend': 'cleanUpDrag'
+            'dragstart': '_onDragStart',
+            'dragend': '_onDragEnd'
         },
         /**
          * Life cycle
@@ -80,25 +80,30 @@
          *
          **/
 
-        dragRegisterDragStart: function(event) {
+        _onDragStart: function(event) {
             DragNDrop._inDrag = true;
-
             if (!DragNDrop.EventData.getEventData(event)) {
                 var transferData = {};
                 // debugger;
                 transferData.elementId = this.id;
                 DragNDrop.EventData.currentDragTarget = this.id;
                 transferData.dropClass = this.dropTargetClass;
-                var thisRect = this.getBoundingClientRect();
+                // var thisRect = this.getBoundingClientRect();
                 var div = document.createElement('div');
                 div.innerHTML = this.innerHTML;
+                event.dataTransfer.setDragImage(this, 0, 0);
                 this._setEventDataTransferDragItem(event, transferData);
                 DragNDrop.EventData.setEventData(event, transferData);
                 DragNDrop.EventData.draggedData = transferData;
             }
         },
 
-        cleanUpDrag: function(event) {
+        /**
+         * cleans up the dragging process
+         * @event dragend
+         **/
+
+        _onDragStart: function(event) {
             clearInterval(DragNDrop.timer);
             //debugger;
             if (DragNDrop.EventData.draggedData.elementId === this.id) {

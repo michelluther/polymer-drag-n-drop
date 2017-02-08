@@ -192,7 +192,7 @@
 
     InsertionPoint.prototype._getDropTargetWrapper = function(parent) {
         return parent.$[parent.dropTargetWrapperId] ?
-            parent.$[parent.dropTargetWrapperId] : Polymer.dom(parent).queryEffectiveChildren('#' + parent.dropTargetWrapperId);
+            parent.$[parent.dropTargetWrapperId] : parent.queryEffectiveChildren('#' + parent.dropTargetWrapperId);
 
     };
 

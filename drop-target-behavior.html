@@ -100,9 +100,9 @@
             return DragNDrop.EventData.draggedData;
         },
 
-        /**
+        /***********************
          * event handlers
-         */
+         ***********************/
 
         /**
          * @event dragstart
@@ -123,6 +123,8 @@
                 DragNDrop.timer = setInterval(this._showPlaceholder, 200);
             }
         },
+
+        /**
 
         _showPlaceholder: function() {
             if (DragNDrop.latestEvent.event) {
